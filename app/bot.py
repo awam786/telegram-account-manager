@@ -89,7 +89,7 @@ async def queue_length() -> int:
 
 
 # ============================================================
-# DATABASE INITIALIZATION
+# DATABASE INITIALIZATION + MIGRATION
 # ============================================================
 
 async def create_tables():
@@ -101,7 +101,7 @@ async def create_tables():
         )
 
         # ----------------------------------------------------
-        # ACCOUNT MANAGEMENT
+        # ACCOUNT MANAGEMENT TABLE
         # ----------------------------------------------------
 
         await connection.execute(
@@ -109,32 +109,71 @@ async def create_tables():
                 """
                 CREATE TABLE IF NOT EXISTS managed_accounts (
                     id SERIAL PRIMARY KEY,
-
                     label VARCHAR(255) NOT NULL,
-
-                    status VARCHAR(50)
-                        NOT NULL DEFAULT 'pending',
-
-                    health VARCHAR(50)
-                        NOT NULL DEFAULT 'unknown',
-
+                    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+                    health VARCHAR(50) NOT NULL DEFAULT 'unknown',
                     notes TEXT,
-
                     last_health_check TIMESTAMPTZ,
-
                     last_seen TIMESTAMPTZ,
-
-                    reconnect_attempts INTEGER
-                        NOT NULL DEFAULT 0,
-
+                    reconnect_attempts INTEGER NOT NULL DEFAULT 0,
                     created_by BIGINT NOT NULL,
-
-                    created_at TIMESTAMPTZ
-                        DEFAULT NOW(),
-
-                    updated_at TIMESTAMPTZ
-                        DEFAULT NOW()
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
+                """
+            )
+        )
+
+        # ----------------------------------------------------
+        # MIGRATE EXISTING managed_accounts TABLE
+        # ----------------------------------------------------
+
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE managed_accounts
+                ADD COLUMN IF NOT EXISTS health
+                    VARCHAR(50) NOT NULL DEFAULT 'unknown'
+                """
+            )
+        )
+
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE managed_accounts
+                ADD COLUMN IF NOT EXISTS last_health_check
+                    TIMESTAMPTZ
+                """
+            )
+        )
+
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE managed_accounts
+                ADD COLUMN IF NOT EXISTS last_seen
+                    TIMESTAMPTZ
+                """
+            )
+        )
+
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE managed_accounts
+                ADD COLUMN IF NOT EXISTS reconnect_attempts
+                    INTEGER NOT NULL DEFAULT 0
+                """
+            )
+        )
+
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE managed_accounts
+                ADD COLUMN IF NOT EXISTS updated_at
+                    TIMESTAMPTZ DEFAULT NOW()
                 """
             )
         )
@@ -155,8 +194,7 @@ async def create_tables():
 
                     tag VARCHAR(100) NOT NULL,
 
-                    created_at TIMESTAMPTZ
-                        DEFAULT NOW(),
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
 
                     UNIQUE(account_id, tag)
                 )
@@ -1210,8 +1248,8 @@ async def stop_handler(message: Message):
 
     await message.answer(
         "🛑 <b>EMERGENCY STOP ACTIVATED</b>\n\n"
-        "All queued account-management jobs should remain "
-        "paused until /resume is used.\n\n"
+        "Queued account-management jobs are now "
+        "marked to remain paused.\n\n"
         "Database remains available."
     )
 

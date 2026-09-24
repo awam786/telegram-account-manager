@@ -1,3 +1,5 @@
+import asyncio
+
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import CommandStart
@@ -20,6 +22,11 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
 
     try:
+        print("🤖 Bot starting...")
         await dp.start_polling(bot)
     finally:
         await bot.session.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
